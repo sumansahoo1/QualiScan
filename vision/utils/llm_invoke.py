@@ -20,3 +20,21 @@ class LLMInvoker:
         )
         ai_msg = self.llm.invoke([message])
         return ai_msg
+
+    def invoke_text_only(self, prompt: str):
+        """
+        Invoke the LLM with text-only prompt, no image.
+
+        Args:
+            prompt (str): The text prompt to send to the LLM
+
+        Returns:
+            The AI message response
+        """
+        message = HumanMessage(
+            content=[
+                {"type": "text", "text": prompt}
+            ]
+        )
+        ai_msg = self.llm.invoke([message])
+        return ai_msg

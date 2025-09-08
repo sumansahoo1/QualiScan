@@ -1,6 +1,6 @@
 import time
 import os
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Path
 from fastapi.responses import JSONResponse
 from .config.logging_config import configure_logging
 from .config.mongo import db
@@ -32,9 +32,17 @@ async def process_ocr(image: UploadFile = File(...), expected_values: str = Form
 
         expected_values = parse_json_content(expected_values)
 
-        process_ocr_task.delay(temp_image_path, image.content_type, expected_values)
+        # Start the Celery task
+        task = process_ocr_task.delay(temp_image_path, image.content_type, expected_values)
 
-        return JSONResponse(content={"status": "success"})
+        return JSONResponse(
+            content={
+                "status": "success",
+                "message": "OCR processing started successfully",
+                "task_id": task.id,
+                "processing_note": "The OCR data will be processed and compared with expected values if provided."
+            }
+        )
     except Exception as e:
         logger.error("Error during OCR processing at process_ocr: %s", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -45,8 +53,10 @@ async def get_orders(page: int = 1, limit: int = 10):
         skip = (page - 1) * limit
         total_orders = db["logs"].count_documents({})
         orders = list(db["logs"].find().skip(skip).limit(limit))
+
         for order in orders:
             order["_id"] = str(order["_id"])
+
         return JSONResponse(
             content={
                 "orders": orders,

@@ -1,0 +1,28 @@
+[
+  {
+    "image": "example1.png",
+    "values": {
+      "manufacturer": "Example Manufacturer",
+      "productName": "Example Product",
+      "ingredients": "Example Ingredients",
+      "manufacturingDate": "2023-01-01",
+      "expiryDate": "2024-01-01",
+      "netWeight": "100g",
+      "barcode": "123456789",
+      "otherDetails": "Example Details"
+    }
+  },
+  {
+    "image": "example2.png",
+    "values": {
+      "manufacturer": "Another Manufacturer",
+      "productName": "Another Product",
+      "ingredients": "Another Ingredients",
+      "manufacturingDate": "2023-02-01",
+      "expiryDate": "2024-02-01",
+      "netWeight": "200g",
+      "barcode": "987654321",
+      "otherDetails": "Another Details"
+    }
+  }
+]
