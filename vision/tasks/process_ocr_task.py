@@ -32,7 +32,7 @@ def process_ocr_task(temp_image_path, image_content_type, expected_values):
 
     # Call LLM
     input_prompt = load_input_prompt()
-    llm_invoker = LLMInvoker(MODEL_NAMES["GEMINI_FLASH_LITE"])
+    llm_invoker = LLMInvoker(MODEL_NAMES["GEMINI_FLASH"])
     ai_msg = llm_invoker.invoke(input_prompt, image_content_type, encoded_image_base64)
     actual_values = parse_json_content(ai_msg.content)
     logger.info("AI message received from LLM")

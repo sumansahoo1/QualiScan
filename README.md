@@ -1,91 +1,206 @@
 # QualiScan
 
-This project uses a Vision Transformer Model to detect the ripeness and freshness of fruits (Banana, Apple, Orange) in images and recognize FMCG products. The frontend is built with React and Tailwind CSS, while the backend leverages Python for image processing and data handling.
+This project uses a Vision Transformer Model to detect the ripeness and freshness of fruits (Banana, Apple, Orange) in images and recognize FMCG products. The frontend is built with React, Vite, Mantine UI, and Tailwind CSS, while the backend uses FastAPI with LangChain/Google Generative AI for image processing and OCR.
 
 ## Project Structure
 
 ```
-dataset/
-frontend/
-    src/
-        App.jsx
-        components/
-        pages/
-        main.jsx
-vision/
-    config.py
-    middleware.py
-    mongo.py
-    routes.py
-    scripts/
-        ocr/
-    utils.py
-main.py
-.env
+QualiScan/
+├── main.py                     # FastAPI app entry point
+├── requirements.txt
+├── .env.example                # Template for environment variables
+├── .env                        # Your actual env vars (create from .env.example)
+├── frontend/
+│   ├── src/
+│   │   ├── main.jsx            # React entry point
+│   │   ├── App.jsx             # Routes & app shell
+│   │   ├── index.css
+│   │   ├── output.css
+│   │   ├── components/
+│   │   │   ├── Header.jsx
+│   │   │   └── ImageCard.jsx
+│   │   ├── pages/
+│   │   │   ├── Dashboard.jsx
+│   │   │   └── Test.jsx
+│   │   └── constants/
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   └── package.json
+├── vision/
+│   ├── __init__.py
+│   ├── middleware.py            # CORS middleware
+│   ├── routes.py               # API routes (/health, /orders, /process-ocr)
+│   ├── constants.py             # Image types, model names, temp dir
+│   ├── config/
+│   │   ├── api_keys.py         # API key loading from .env
+│   │   ├── celery_worker.py    # Celery app definition
+│   │   ├── logging_config.py   # Logging formatter
+│   │   ├── mongo.py            # MongoDB connection
+│   │   └── roboflow.py         # Roboflow inference client
+│   ├── utils/
+│   │   ├── db_operations.py    # Order ID generation & log storage
+│   │   ├── image_processing.py # Segmentation & bounding boxes
+│   │   ├── llm_invoke.py       # LangChain Gemini invoker
+│   │   ├── sanitize.py         # JSON parsing utilities
+│   │   └── prompt/
+│   │       ├── load_prompt.py
+│   │       └── input_prompt.txt
+│   └── tasks/
+│       └── process_ocr_task.py # Celery OCR processing task
+└── dataset/
 ```
+
+## Prerequisites
+
+- **Conda** (Miniconda/Anaconda)
+- **Node.js** ≥ 18 + **pnpm** (≥ 9.0)
+- **Redis** (for Celery background tasks — optional if not using OCR processing)
 
 ## Installation
 
-### Conda Environment
+### 1. Conda Environment
 
-Create and activate the conda environment:
 ```sh
 conda create -n qualiscan python=3.10
 conda activate qualiscan
 ```
 
-### Install Packages
+### 2. Install Python Dependencies
 
-Install packages with conda:
+Install backend packages:
+
 ```sh
-conda install -c conda-forge fastapi uvicorn opencv numpy pillow python-dotenv google-generativeai langchain-core dataclasses-json google-ai-generativelanguage requests charset-normalizer backoff supervision pymongo langchain-google-genai aiohttp celery[redis] redis
+pip install fastapi uvicorn python-multipart numpy pillow python-dotenv google-generativeai langchain-core langchain-google-genai pymongo celery redis aiohttp supervision matplotlib requests dataclasses-json
 ```
 
-Install remaining packages with pip:
+Install inference-sdk separately (version-pinned):
+
 ```sh
 pip install inference-sdk --no-deps
+pip install 'opencv-python<=4.10.0.84,>=4.8.1.78'
+```
+
+> **Why pin opencv-python?** `supervision` pulls the latest opencv-python but `inference-sdk` requires ≤ 4.10.0.84. Installing inference-sdk first with `--no-deps` and then pinning opencv-python avoids the version conflict.
+
+### 3. Environment Variables
+
+Copy the example env file and fill in your API keys:
+
+```sh
+cp .env.example .env
+```
+
+Edit `.env` and set your keys:
+
+| Variable | Service | Required For |
+|---|---|---|
+| `GOOGLE_API_KEY` | Google Generative AI | LLM OCR processing |
+| `LANGCHAIN_API_KEY` | LangChain / LangSmith | Tracing (optional) |
+| `ROBOFLOW_API_KEY` | Roboflow | Object detection / segmentation |
+| `MONGO_URL` | MongoDB | Order log storage |
+
+> The server will start without these keys, but AI features (OCR, segmentation) will fail at runtime. Health-check and order-list endpoints will still work.
+
+### 4. Frontend Dependencies
+
+```sh
+cd frontend
+pnpm install
 ```
 
 ## Usage
 
-### Running the Frontend
+### Start Redis (for Celery tasks)
 
-Navigate to the frontend directory:
+If you need background OCR processing, start Redis first:
+
 ```sh
-cd frontend
+redis-server
 ```
 
-Install dependencies:
-```sh
-pnpm install
-```
-
-Start the development server:
-```sh
-pnpm run dev
-```
+If you don't need OCR processing, you can skip this — the FastAPI server will still run.
 
 ### Running the Backend
 
-Run the main script:
 ```sh
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Running celery: for background tasks
+The backend starts at **http://localhost:8000**.
 
-Run the script:
+- `/health/` — Health check (always available)
+- `/orders/` — Fetch order logs (requires MongoDB)
+- `/process-ocr/` — OCR processing (requires API keys + Redis + Celery)
+
+### Running Celery Worker (for background tasks)
+
 ```sh
 celery -A vision.config.celery_worker.celery_app worker --loglevel=info
 ```
 
+### Running the Frontend
+
+```sh
+cd frontend
+pnpm run dev
+```
+
+The frontend starts at **http://localhost:5173**.
+
+## Troubleshooting
+
+### `ModuleNotFoundError: No module named 'fastapi'`
+
+Make sure you've activated the conda environment and installed all pip packages:
+
+```sh
+conda activate qualiscan
+pip install fastapi uvicorn python-multipart numpy pillow python-dotenv google-generativeai langchain-core langchain-google-genai pymongo celery redis aiohttp supervision matplotlib requests dataclasses-json
+```
+
+### `Form data requires "python-multipart" to be installed`
+
+```sh
+pip install python-multipart
+```
+
+### `inference-sdk` version conflict with `opencv-python`
+
+```sh
+pip install 'opencv-python<=4.10.0.84,>=4.8.1.78'
+```
+
+### `GOOGLE_API_KEY` / `LANGCHAIN_API_KEY` warnings at startup
+
+The server logs warnings if API keys are missing. The server will still run — you can use `/health/` and `/orders/` endpoints. Set your actual keys in `.env` to enable AI features.
+
+### MongoDB connection error
+
+If `MONGO_URL` is not set or MongoDB is unreachable, the server logs a warning. Order-log features will be unavailable, but the server will still run.
+
+### Redis connection error for Celery
+
+Make sure Redis is installed and running before starting the Celery worker:
+
+```sh
+# Install Redis (Ubuntu/Debian)
+sudo apt install redis-server
+
+# Start Redis
+redis-server
+```
+
 ## Key Files and Directories
 
-- `frontend/src/components`: Contains React components.
-- `image_process.py`: Handles image processing logic.
-- `ocr/ocr.py`: Contains OCR-related functions.
-- `utils/expiry_date_checker.py`: Utility for checking expiry dates.
-- `vision/config.py`: Configuration for vision-related tasks.
+- `frontend/src/pages/` — React page components (Dashboard, Test)
+- `frontend/src/components/` — Shared React components (Header, ImageCard)
+- `vision/routes.py` — FastAPI route definitions
+- `vision/utils/image_processing.py` — Image segmentation & bounding boxes
+- `vision/utils/llm_invoke.py` — LLM (Gemini) invocation via LangChain
+- `vision/config/` — Configuration (API keys, Celery, MongoDB, Roboflow, logging)
+- `vision/tasks/process_ocr_task.py` — Celery OCR task pipeline
+- `vision/scripts/ocr/` — Standalone OCR notebooks (Colab, not imported by server)
 
 ## Contributing
 

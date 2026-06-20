@@ -47,4 +47,5 @@ dist-ssr/
 *.sw?
 
 # Ignore pnpm lock file
-pnpm-lock.yaml
+pnpm-lock.yamldump.rdb
+vision/temp/*.jpg

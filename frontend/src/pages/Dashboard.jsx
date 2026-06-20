@@ -12,7 +12,7 @@ const Dashboard = () => {
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await axios.get(`http://localhost:8000/orders/?page=${page}&limit=10`);
+        const response = await axios.get(`/api/orders/?page=${page}&limit=10`);
         setData(response.data.orders || []);
         setTotalPages(Math.ceil(response.data.total / response.data.limit));
       } catch (error) {

@@ -80,7 +80,7 @@ const Test = () => {
 
     formData.append('expected_values', JSON.stringify(expectedValues));
 
-    await fetch('http://localhost:8000/process-ocr/', {
+    await fetch('/api/process-ocr/', {
       method: 'POST',
       body: formData,
     }).catch((error) => {
